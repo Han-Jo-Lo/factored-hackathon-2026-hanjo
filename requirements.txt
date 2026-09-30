@@ -3,3 +3,7 @@ pandas
 pandera
 pyarrow
 duckdb
+pytest
+tabulate
+deepagents
+langchain
