@@ -2,8 +2,12 @@ from typing import Callable
 
 from langchain.agents.middleware import wrap_tool_call, ToolCallRequest
 from langchain_core.messages import ToolMessage
+import logging
 
-from logging_config import logger
+logger=logging.getLogger("agent.security")
+
+
+#from logging_config import logger
 
 # Tools que este agente NUNCA debería ejecutar, sin importar qué diga el
 # prompt del usuario o lo que el modelo "decida". Esta es una barrera de
@@ -20,7 +24,9 @@ def tool_authorization(
     tool_name = request.tool_call["name"]
 
     if tool_name in DENIED_TOOLS:
-        logger.warning("tool_call DENIED tool=%s reason=not_authorized", tool_name)
+        
+        logger.warning(f"[{tool_name}] DENEGADA no autorizado" )
+         
         return ToolMessage(
             content=f"Acción no autorizada: '{tool_name}' no está permitida para este agente.",
             tool_call_id=request.tool_call["id"],
@@ -55,10 +61,8 @@ def sanitize_tool_output(
     content = str(result.content).lower()
 
     if any(pattern in content for pattern in SUSPICIOUS_PATTERNS):
-        logger.error(
-            "possible_prompt_injection tool=%s content_preview=%r",
-            request.tool_call["name"], content[:80],
-        )
+        tool_name = request.tool_call["name"]
+        logger.error(f"[{tool_name}] DENEGADA posible prompt injection" )
         return ToolMessage(
             content="[Resultado bloqueado: se detectó un posible intento de manipulación]",
             tool_call_id=request.tool_call["id"],

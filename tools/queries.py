@@ -17,7 +17,7 @@ from typing import Optional
  
 import duckdb
 import pandas as pd
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator,ConfigDict
  
 GOLD_TABLE_PATH = "data/gold/campaign_channel_performance.parquet"
  
@@ -63,6 +63,7 @@ class Orden(str, Enum):
 # El formulario estructurado que el LLM llena
 # ---------------------------------------------------------------------------
 class ConsultaAtribucionInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     campaign_ids: Optional[list[str]] = Field(
         default=None,
         description="IDs de campana a filtrar, ej. ['CMP0032']. None = todas las campanas.",

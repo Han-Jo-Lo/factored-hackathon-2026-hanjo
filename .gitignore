@@ -1,8 +1,14 @@
 .env
 *.log
 __pycache__
-data/*/
 
 __pycache__/
 *.pyc
 *.pyo
+
+.pytest_cache
+.pytest_cache/
+
+*.jsonl
+*.parquet
+*.csv

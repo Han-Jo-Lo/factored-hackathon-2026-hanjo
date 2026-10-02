@@ -4,6 +4,7 @@ from langchain_core.messages import ToolMessage
 from errors import TransientToolError, PermanentToolError
 import logging
 import time
+from pydantic import ValidationError
 
 logger=logging.getLogger("agent.tools")
 
@@ -35,6 +36,19 @@ def retry_tool(
                 tool_call_id=request.tool_call["id"],
                 status="error",
             )
+
+        except ValidationError as e:
+            # LangChain valida 'args_schema' ANTES de llamar al func del tool
+            # (ver StructuredTool._parse_input) -- esto significa que una
+            # entrada invalida nunca llega a pasar por el try/except interno
+            # del tool (el que traduce a ToolValidationError).
+            logger.warning(f"[{tool_name}] entrada invalida (rechazada por LangChain antes del func): {e}")
+            return ToolMessage(
+                content=f"Entrada invalida para la herramienta: {e.errors()}",
+                tool_call_id=request.tool_call["id"],
+                status="error",
+            )
+
 
         except TransientToolError as e:
             

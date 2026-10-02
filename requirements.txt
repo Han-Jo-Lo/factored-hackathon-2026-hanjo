@@ -5,5 +5,7 @@ pyarrow
 duckdb
 pytest
 tabulate
+load_dotenv
 deepagents
 langchain
+langchain-openai

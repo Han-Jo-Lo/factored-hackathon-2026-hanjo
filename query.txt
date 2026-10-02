@@ -1,0 +1,11 @@
+SELECT
+send_channel,
+sum(conversiones_reales) as conversiones_reales,
+sum(conversiones_creditadas) as conversiones_creditadas,
+sum(valor_creditado_usd)/ifnull(sum(costo_total_usd),0) as roi
+FROM read_parquet('/home/hanjo/Documents/Python_Scripts/hackathon/data/gold/campaign_channel_performance.parquet')
+where
+mes >='2026-01' and mes <='2026-03'
+group by all
+order by roi desc
+LIMIT 1000;
