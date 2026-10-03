@@ -18,6 +18,8 @@ from typing import Optional
 import duckdb
 import pandas as pd
 from pydantic import BaseModel, Field, field_validator,ConfigDict
+
+from auth import apply_role_ceiling_to_args
  
 GOLD_TABLE_PATH = "data/gold/campaign_channel_performance.parquet"
  
@@ -108,7 +110,7 @@ class ConsultaAtribucionInput(BaseModel):
 # ---------------------------------------------------------------------------
 # Traduccion de la entrada estructurada a SQL seguro
 # ---------------------------------------------------------------------------
-def _build_query(params: ConsultaAtribucionInput):
+def _build_query(params: ConsultaAtribucionInput, role: str | None = None):
     """
     Arma el SQL y sus valores de parametro por separado -- los valores
     de filtro SIEMPRE van ligados via '?', nunca concatenados como texto.
@@ -140,6 +142,25 @@ def _build_query(params: ConsultaAtribucionInput):
     where_clause = " AND ".join(condiciones)
     dims = [d.value for d in params.agrupar_por]
     group_by_clause = ", ".join(dims) if dims else "1"
+
+    if role:
+        capped = apply_role_ceiling_to_args(
+            role,
+            {
+                "limite": params.limite,
+                "metricas": [m.value for m in params.metricas],
+                "orden": params.orden.value,
+            },
+        )
+    else:
+        capped = {
+            "limite": params.limite,
+            "metricas": [m.value for m in params.metricas],
+            "orden": params.orden.value,
+        }
+    limite = capped["limite"]
+    metricas = capped["metricas"]
+    orden = Orden(capped["orden"])
  
     # --- Re-agregacion segura ---
     # roi NUNCA se promedia directo (promediar razones ya calculadas es un
@@ -164,9 +185,10 @@ def _build_query(params: ConsultaAtribucionInput):
             "AS pct_cobertura_costo"
         ),
     }
-    for m in params.metricas:
-        if metric_exprs[m.value] not in select_parts:
-            select_parts.append(metric_exprs[m.value])
+    for m in metricas:
+        expr = metric_exprs[m]
+        if expr not in select_parts:
+            select_parts.append(expr)
  
     orden_map = {
         Orden.roi_desc: "roi DESC",
@@ -174,7 +196,7 @@ def _build_query(params: ConsultaAtribucionInput):
         Orden.valor_desc: "valor_creditado_usd DESC",
         Orden.conversiones_desc: "conversiones_reales DESC",
     }
-    order_clause = f"ORDER BY {orden_map[params.orden]}" if params.orden in orden_map else ""
+    order_clause = f"ORDER BY {orden_map[orden]}" if orden in orden_map else ""
  
     sql = f"""
         SELECT {", ".join(select_parts)}
@@ -182,19 +204,20 @@ def _build_query(params: ConsultaAtribucionInput):
         WHERE {where_clause}
         GROUP BY {group_by_clause}
         {order_clause}
-        LIMIT {params.limite}
+        LIMIT {limite}
     """
     valores_finales = [GOLD_TABLE_PATH] + valores
     return sql, valores_finales
  
  
-def query_campaign_performance(params: ConsultaAtribucionInput) -> pd.DataFrame:
+def query_campaign_performance(
+    params: ConsultaAtribucionInput, role: str | None = None
+) -> pd.DataFrame:
     """
-    Punto de entrada del tool. Recibe SOLO el objeto validado por Pydantic
-    -- si esto se conecta a LangChain, este es el 'func' del StructuredTool,
-    con args_schema=ConsultaAtribucionInput.
+    Punto de entrada del tool. Recibe el objeto validado por Pydantic y,
+    si hay sesion, el rol de configurable (nunca del formulario del LLM).
     """
-    sql, valores = _build_query(params)
+    sql, valores = _build_query(params, role=role)
     con = duckdb.connect()
     try:
         return con.execute(sql, valores).df()

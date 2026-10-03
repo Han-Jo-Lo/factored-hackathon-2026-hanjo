@@ -14,8 +14,9 @@ referencia con "from tools.queries import query_campaign_performance".
 """
 import pandas as pd
 import pytest
-from tools.agent_tools import campaign_performance_tool
 from pydantic import ValidationError
+from tools.agent_tools import campaign_performance_tool
+from tools.queries import ConsultaAtribucionInput, Metrica, Orden, _build_query
 
 
 
@@ -41,3 +42,17 @@ def test_sql_tool_without_result(monkeypatch):
     resultado = campaign_performance_tool.invoke({"campaign_ids":["CMP9999"]})
  
     assert "no devolvio resultados" in resultado.lower()
+
+
+def test_build_query_viewer_role_caps_sql():
+    params = ConsultaAtribucionInput(
+        limite=50,
+        metricas=[Metrica.roi, Metrica.costo_total_usd],
+        orden=Orden.valor_desc,
+    )
+    sql, _ = _build_query(params, role="marketing_viewer")
+    assert "LIMIT 10" in sql
+    assert "AS costo_total_usd" not in sql
+    assert " AS roi" in sql
+    assert "valor_creditado_usd DESC" not in sql
+

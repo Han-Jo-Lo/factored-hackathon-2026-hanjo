@@ -5,7 +5,11 @@ pyarrow
 duckdb
 pytest
 tabulate
-load_dotenv
+python-dotenv
 deepagents
 langchain
 langchain-openai
+langgraph-checkpoint-redis
+redis
+celery
+fastapi

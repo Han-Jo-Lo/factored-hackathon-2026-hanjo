@@ -4,6 +4,8 @@ from langchain.agents.middleware import wrap_tool_call, ToolCallRequest
 from langchain_core.messages import ToolMessage
 import logging
 
+from auth import apply_role_ceiling_to_args, tool_is_allowed
+
 logger=logging.getLogger("agent.security")
 
 
@@ -14,6 +16,28 @@ logger=logging.getLogger("agent.security")
 # código -- no depende de que el modelo respete el system_prompt, y por
 # tanto no la puede desactivar un prompt injection.
 DENIED_TOOLS = {"execute", "write_file", "edit_file"}
+
+
+def role_from_request(request: ToolCallRequest) -> str | None:
+    runtime = request.runtime
+    if runtime is None:
+        return None
+    config = getattr(runtime, "config", None)
+    if not isinstance(config, dict):
+        return None
+    configurable = config.get("configurable") or {}
+    role = configurable.get("role")
+    if not isinstance(role, str) or not role.strip():
+        return None
+    return role
+
+
+def _unauthorized_message(request: ToolCallRequest, detail: str) -> ToolMessage:
+    return ToolMessage(
+        content=detail,
+        tool_call_id=request.tool_call["id"],
+        status="error",
+    )
 
 
 @wrap_tool_call
@@ -27,11 +51,25 @@ def tool_authorization(
         
         logger.warning(f"[{tool_name}] DENEGADA no autorizado" )
          
-        return ToolMessage(
-            content=f"Acción no autorizada: '{tool_name}' no está permitida para este agente.",
-            tool_call_id=request.tool_call["id"],
-            status="error",
+        return _unauthorized_message(
+            request,
+            f"Acción no autorizada: '{tool_name}' no está permitida para este agente.",
         )
+
+    role = role_from_request(request)
+    if not tool_is_allowed(role, tool_name):
+        logger.warning(f"[{tool_name}] DENEGADA rol={role!r}")
+        return _unauthorized_message(
+            request,
+            "Acción no autorizada: sesión ausente o rol sin permiso para esta herramienta.",
+        )
+
+    capped_args = apply_role_ceiling_to_args(
+        role, dict(request.tool_call.get("args") or {})
+    )
+    request = request.override(
+        tool_call={**request.tool_call, "args": capped_args}
+    )
 
     return handler(request)
 

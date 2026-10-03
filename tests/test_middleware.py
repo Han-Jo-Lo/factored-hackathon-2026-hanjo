@@ -8,12 +8,24 @@ from errors import ToolValidationError,TransientToolError
 from pydantic import ValidationError
 from middleware.security import sanitize_tool_output,tool_authorization
 
-def make_request(tool_name="sql_tool",call_id="call_1",args=None):
+class FakeRuntime:
+    def __init__(self, role=None, user_id="analyst_demo"):
+        self.config = {
+            "configurable": {
+                "thread_id": "sess_test",
+                "user_id": user_id,
+                "role": role,
+            }
+        }
+
+
+def make_request(tool_name="consultar_desempeno_campanas", call_id="call_1", args=None, role="marketing_analyst"):
+    runtime = None if role is None else FakeRuntime(role=role)
     return ToolCallRequest(
         tool_call={"name":tool_name,"id":call_id,"args":args or {}},
         tool=None,
         state=[],
-        runtime=None
+        runtime=runtime
     )
 
 def test_retry_tool_retries_transient_errors_and_eventually_fails(monkeypatch):
@@ -74,6 +86,57 @@ def test_tool_authorization_allow_tool():
     result=tool_authorization.wrap_tool_call(make_request(),handler)
 
     assert result.content=="ok"
+
+
+def test_tool_authorization_requires_session_role():
+    handler_was_called = {"called": False}
+
+    def handler(request):
+        handler_was_called["called"] = True
+        return ToolMessage(content="ok", tool_call_id=request.tool_call["id"])
+
+    result = tool_authorization.wrap_tool_call(
+        make_request(role=None), handler
+    )
+
+    assert handler_was_called["called"] is False
+    assert result.status == "error"
+
+
+def test_tool_authorization_unknown_role_is_denied():
+    handler_was_called = {"called": False}
+
+    def handler(request):
+        handler_was_called["called"] = True
+        return ToolMessage(content="ok", tool_call_id=request.tool_call["id"])
+
+    result = tool_authorization.wrap_tool_call(
+        make_request(role="admin"), handler
+    )
+
+    assert handler_was_called["called"] is False
+    assert result.status == "error"
+
+
+def test_viewer_role_caps_limite_and_strips_cost_metric():
+    seen = {}
+
+    def handler(request):
+        seen["args"] = request.tool_call["args"]
+        return ToolMessage(content="ok", tool_call_id=request.tool_call["id"])
+
+    result = tool_authorization.wrap_tool_call(
+        make_request(
+            role="marketing_viewer",
+            args={"limite": 50, "metricas": ["roi", "costo_total_usd"], "orden": "valor_desc"},
+        ),
+        handler,
+    )
+
+    assert result.status == "success"
+    assert seen["args"]["limite"] == 10
+    assert "costo_total_usd" not in seen["args"]["metricas"]
+    assert seen["args"]["orden"] == "sin_orden"
 
 #---------------------
 def test_satinize_tool_prompt_injection_pattern():
