@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Copiloto marketing</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div>
+          <h1 id="title">Copiloto marketing</h1>
+          <p class="tagline" id="tagline">Analista interno · campañas</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <div class="lang" role="group" aria-label="Idioma">
+          <button type="button" id="lang-es" class="lang-btn is-on">ES</button>
+          <button type="button" id="lang-pt" class="lang-btn">PT</button>
+        </div>
+        <div class="status">
+          <span class="status-dot" id="status-dot"></span>
+          <span id="status-label">Desconectado</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="shell">
+      <aside class="sidebar">
+        <h2 id="session-heading">Sesión</h2>
+        <nav class="session-list" id="session-list"></nav>
+        <p class="role-line"><span id="role-label">Rol</span>: <strong id="role-value"></strong></p>
+      </aside>
+
+      <main class="main">
+        <div class="transcript" id="transcript" aria-live="polite"></div>
+
+        <section class="hitl" id="hitl" hidden>
+          <p class="hitl-kicker" id="hitl-kicker">Revisión humana</p>
+          <p class="hitl-desc" id="hitl-desc"></p>
+          <div class="hitl-actions">
+            <button type="button" class="btn btn-ghost" id="btn-reject">Rechazar</button>
+            <button type="button" class="btn btn-primary" id="btn-approve">Aprobar</button>
+          </div>
+        </section>
+
+        <form class="composer" id="composer">
+          <label class="sr-only" for="input" id="input-label">Mensaje</label>
+          <textarea id="input" rows="2" required></textarea>
+          <button type="submit" class="btn btn-primary" id="btn-send">Enviar</button>
+        </form>
+      </main>
+    </div>
+    <script src="/app.js"></script>
+  </body>
+</html>

@@ -4,7 +4,7 @@ from langchain.agents.middleware import wrap_tool_call, ToolCallRequest
 from langchain_core.messages import ToolMessage
 import logging
 
-from auth import apply_role_ceiling_to_args, tool_is_allowed
+from app.auth import apply_role_ceiling_to_args, tool_is_allowed
 
 logger=logging.getLogger("agent.security")
 

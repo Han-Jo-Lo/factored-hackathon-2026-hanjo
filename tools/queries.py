@@ -19,7 +19,7 @@ import duckdb
 import pandas as pd
 from pydantic import BaseModel, Field, field_validator,ConfigDict
 
-from auth import apply_role_ceiling_to_args
+from app.auth import apply_role_ceiling_to_args
  
 GOLD_TABLE_PATH = "data/gold/campaign_channel_performance.parquet"
  

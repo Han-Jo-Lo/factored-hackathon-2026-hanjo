@@ -64,12 +64,41 @@ def _payload_si_interrupt(response, user_id, role):
     }
 
 
+def _texto_de_contenido(contenido) -> str:
+    if contenido is None:
+        return ""
+    if isinstance(contenido, str):
+        return contenido.strip()
+    if isinstance(contenido, list):
+        partes = [_texto_de_contenido(bloque) for bloque in contenido]
+        return "\n".join(p for p in partes if p)
+    if isinstance(contenido, dict):
+        if contenido.get("text"):
+            return str(contenido["text"]).strip()
+        if contenido.get("content") is not None:
+            return _texto_de_contenido(contenido["content"])
+        return ""
+    text = getattr(contenido, "text", None)
+    if text:
+        return str(text).strip()
+    inner = getattr(contenido, "content", None)
+    if inner is not None and inner is not contenido:
+        return _texto_de_contenido(inner)
+    return str(contenido).strip()
+
+
 def _texto_final(response) -> str:
     messages = response.get("messages") or []
+    for mensaje in reversed(messages):
+        tipo = getattr(mensaje, "type", None) or getattr(mensaje, "role", None)
+        if tipo in {"human", "user", "tool"}:
+            continue
+        texto = _texto_de_contenido(getattr(mensaje, "content", None))
+        if texto:
+            return texto
     if not messages:
         return ""
-    contenido = getattr(messages[-1], "content", messages[-1])
-    return contenido if isinstance(contenido, str) else str(contenido)
+    return _texto_de_contenido(getattr(messages[-1], "content", messages[-1]))
 
 
 def _publicar_resultado_agente(thread_id, user_id, role, response):

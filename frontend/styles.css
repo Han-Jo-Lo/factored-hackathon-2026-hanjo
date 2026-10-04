@@ -1,0 +1,309 @@
+:root {
+  --cyan: rgb(0, 242, 242);
+  --blue: rgb(0, 71, 229);
+  --white: rgb(255, 255, 255);
+  --black: rgb(0, 0, 0);
+  --bg: #07080c;
+  --panel: #101218;
+  --muted: #9aa3b5;
+  --radius: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--white);
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1.25rem;
+  background: var(--blue);
+}
+
+.brand {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.brand-mark {
+  width: 12px;
+  height: 32px;
+  background: var(--cyan);
+  border-radius: 2px;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+}
+
+.tagline {
+  margin: 0;
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.lang {
+  display: flex;
+  border: 1px solid color-mix(in srgb, var(--white) 35%, transparent);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.lang-btn {
+  background: transparent;
+  color: var(--white);
+  border: 0;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.lang-btn.is-on {
+  background: var(--cyan);
+  color: var(--black);
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #666;
+}
+
+.status-dot.ok {
+  background: var(--cyan);
+}
+
+.status-dot.wait {
+  background: #f5c542;
+}
+
+.status-dot.err {
+  background: #ff5c5c;
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: calc(100vh - 64px);
+}
+
+.sidebar {
+  padding: 1.1rem;
+  background: var(--panel);
+  border-right: 1px solid color-mix(in srgb, var(--cyan) 22%, transparent);
+}
+
+.sidebar h2 {
+  margin: 0 0 0.75rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+
+.session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.session-btn {
+  text-align: left;
+  background: transparent;
+  color: var(--white);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 0.55rem 0.7rem;
+  cursor: pointer;
+}
+
+.session-btn small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.session-btn.is-on {
+  border-color: var(--cyan);
+  background: color-mix(in srgb, var(--cyan) 12%, transparent);
+}
+
+.role-line {
+  margin-top: 1.2rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.role-line strong {
+  color: var(--white);
+  font-weight: 600;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.transcript {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.bubble {
+  max-width: min(72ch, 92%);
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.bubble.user {
+  align-self: flex-end;
+  background: var(--blue);
+}
+
+.bubble.agent {
+  align-self: flex-start;
+  background: var(--white);
+  color: var(--black);
+}
+
+.bubble.sys {
+  align-self: center;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.hitl {
+  margin: 0 1.25rem 0.75rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--cyan);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--cyan) 8%, var(--panel));
+}
+
+.hitl-kicker {
+  margin: 0 0 0.35rem;
+  color: var(--cyan);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hitl-desc {
+  margin: 0 0 0.8rem;
+  font-size: 0.9rem;
+}
+
+.hitl-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.composer {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.9rem 1.25rem 1.15rem;
+  border-top: 1px solid color-mix(in srgb, var(--white) 10%, transparent);
+}
+
+.composer textarea {
+  flex: 1;
+  resize: none;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--white) 16%, transparent);
+  background: var(--panel);
+  color: var(--white);
+  padding: 0.7rem 0.8rem;
+  font: inherit;
+}
+
+.composer textarea:focus {
+  outline: 2px solid var(--cyan);
+  border-color: transparent;
+}
+
+.btn {
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 0.55rem 1.05rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--blue);
+  color: var(--white);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--cyan);
+  border-color: var(--cyan);
+}
+
+@media (max-width: 780px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    border-right: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--cyan) 22%, transparent);
+  }
+
+  .session-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}

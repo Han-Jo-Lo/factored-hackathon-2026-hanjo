@@ -1,4 +1,6 @@
 from fastapi import FastAPI,WebSocket,WebSocketDisconnect
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from config import REDIS_HOST,REDIS_PORT
 from app.connection_manager import ConnectionManager
 from worker.tasks import ejecutar_agente,reanudar_agente
@@ -13,6 +15,7 @@ app = FastAPI()
 manager=ConnectionManager()
 
 redis_async=aioredis.Redis(host=REDIS_HOST,port=REDIS_PORT,decode_responses=True)
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
 
 @app.websocket('/ws/{client_id}')
@@ -32,32 +35,20 @@ async def websocket_endpoint(websocket:WebSocket,client_id:str):
     # y dejar que otras cosas ocurran mientras espera algo".
     async def redis_listener():
         #Crea una suscripción Pub/Sub
-        pubsub=redis_async.pubsub()
-        canal=f"canal:{thread_id}"
-
-        #Se suscribe al canal específico de este cliente
-        #await — pausa AQUÍ, pero deja seguir a otros
-        #"Voy a esperar esto, pero mientras espero, el programa puede hacer otras
-        #  tareas. No te quedes bloqueado por mí."
+        pubsub_client = aioredis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+        pubsub = pubsub_client.pubsub()
+        canal = f"canal:{thread_id}"
         await pubsub.subscribe(canal)
         try:
-            #Queda escuchando indefinidamente. Cada vez que Celery publique algo 
-            #en canal:{client_id}, lo reenvía inmediatamente por WebSocket al navegador.
             async for message in pubsub.listen():
-                if message['type']=='message':
-                    await manager.send_personal_message(message['data'],websocket)
+                if message["type"] == "message":
+                    await websocket.send_text(message["data"])
         except Exception as e:
             print(f"Error en Pub/Sub para {thread_id}: {e}")
         finally:
-            #Si algo falla, se desuscribe limpiamente.
             await pubsub.unsubscribe(canal)
+            await pubsub_client.aclose()
 
-    # 🚀 Encendemos el escuchador de Redis en segundo plano para este cliente
-    #Esto es clave. asyncio.create_task() ejecuta redis_listener() en paralelo,
-    #  sin bloquear el resto del código.
-    #asyncio es la librería que administra todas estas tareas pausables. 
-    # Es como el gerente del restaurante que coordina a todos los meseros.
-    #syncio.create_task()   "Empieza esto en paralelo, ahora mismo"
     listener_task = asyncio.create_task(redis_listener())
 
     try:
@@ -98,4 +89,7 @@ async def websocket_endpoint(websocket:WebSocket,client_id:str):
         listener_task.cancel()
         # Opcional: log de desconexión
         print(f"Cliente {thread_id} desconectado.")
+
+
+app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
 
