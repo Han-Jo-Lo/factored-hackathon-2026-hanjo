@@ -13,3 +13,5 @@ langgraph-checkpoint-redis
 redis
 celery
 fastapi
+langgraph
+uvicorn

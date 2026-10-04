@@ -5,5 +5,5 @@ app_celery=Celery(
     'worker',
     broker=REDIS_BROKER,
     backend=REDIS_BACKEND,
-    include=['tasks']
+    include=['worker.tasks']
 )

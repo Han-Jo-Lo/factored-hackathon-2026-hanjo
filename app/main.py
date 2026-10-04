@@ -1,10 +1,11 @@
 from fastapi import FastAPI,WebSocket,WebSocketDisconnect
 from config import REDIS_HOST,REDIS_PORT
-from connection_manager import ConnectionManager
-from tasks import ejecutar_agente
-from auth import resolve_test_session
+from app.connection_manager import ConnectionManager
+from worker.tasks import ejecutar_agente,reanudar_agente
+from app.auth import resolve_test_session
 import asyncio
 import redis.asyncio as aioredis
+import json
 
 
 app = FastAPI()
@@ -67,14 +68,28 @@ async def websocket_endpoint(websocket:WebSocket,client_id:str):
                 await manager.send_personal_message("__pong__",websocket)
                 continue
 
+            try:
+                cuerpo = json.loads(data)
+            except json.JSONDecodeError:
+                cuerpo = None
+
+
             # 2. Delegamos el procesamiento pesado a Celery de forma asíncrona
             # Esto no congela el hilo y responde de inmediato
-            ejecutar_agente.delay(
-                thread_id=session["thread_id"],
-                user_id=session["user_id"],
-                role=session["role"],
-                message=data,
-            )
+            if isinstance(cuerpo, dict) and cuerpo.get("type") == "hitl_decision":
+                reanudar_agente.delay(
+                    thread_id=session["thread_id"],
+                    user_id=session["user_id"],
+                    role=session["role"],
+                    decision=cuerpo.get("decision"),
+                )
+            else:
+                ejecutar_agente.delay(
+                    thread_id=session["thread_id"],
+                    user_id=session["user_id"],
+                    role=session["role"],
+                    message=data,
+                )
 
     except WebSocketDisconnect:
         # 3. Limpiamos la conexión si el usuario cierra el navegador o pierde conexión

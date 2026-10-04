@@ -2,6 +2,7 @@ from redis import Redis
 from langgraph.checkpoint.redis import RedisSaver
 from redisvl.exceptions import RedisSearchError
 from dotenv import load_dotenv
+from requests import request
 load_dotenv()
 import os
 
@@ -33,14 +34,24 @@ def get_redis_saver()->RedisSaver:
             raise
     return memory_saver
 
+COBERTURA_MINIMA_HITL=70.0
 
+def cobertura_requiere_aprobacion(request)->bool:
+    args=request.tool_call.get("args") or {}
+    raw=args.get("cobertura_minima",COBERTURA_MINIMA_HITL)
+    try:
+        umbral=float(raw)
+    except (TypeError,ValueError):
+        return False
+    return umbral<COBERTURA_MINIMA_HITL
 
-# HITL: pausa la ejecución antes de correr classify_city, esperando
-# aprobación humana. Requiere el checkpointer de arriba para persistir el
-# state mientras se espera la decisión.
 INTERRUPT_ON = {
-    "classify_city": {
-        "allowed_decisions": ["approve", "edit", "reject"],
-        "description": "El agente quiere clasificar la ciudad. ¿Apruebas, editas o rechazas?",
+    "consultar_desempeno_campanas":{
+        "allowed_decisions": ["approve", "reject"],
+        "description":(
+            "Consulta con cobertura_minima por debajo de 70. "
+            "El ROI puede estar sesgado. ¿Apruebas o rechazas?"
+        ),
+        "when":cobertura_requiere_aprobacion
     }
 }
