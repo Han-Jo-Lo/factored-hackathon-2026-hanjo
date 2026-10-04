@@ -1,0 +1,48 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-app: &app-build
+  build: .
+  env_file:
+    - .env
+  environment:
+    REDIS_HOST: redis
+    REDIS_PORT: "6379"
+  restart: unless-stopped
+  logging: *default-logging
+  depends_on:
+    redis:
+      condition: service_healthy
+
+services:
+  web:
+    <<: *app-build
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data/gold:/code/data/gold:ro
+
+  worker:
+    <<: *app-build
+    command: celery -A worker.celery_app:app_celery worker --loglevel=info
+    volumes:
+      - ./data/gold:/code/data/gold:ro
+
+  redis:
+    image: redis/redis-stack-server:latest
+    restart: unless-stopped
+    logging: *default-logging
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  redis_data:
