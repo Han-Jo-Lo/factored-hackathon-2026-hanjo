@@ -10,5 +10,4 @@ pipeline
 scripts
 profile_data.py
 ws_cliente.py
-*.md
 .cursor

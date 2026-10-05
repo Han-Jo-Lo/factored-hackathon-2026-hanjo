@@ -25,6 +25,10 @@ const I18N = {
     placeholder: "Escribe un mensaje…",
     you: "Tú",
     agent: "Agente",
+    thinking: "Consultando…",
+    resuming: "Reanudando…",
+    toolConsultar: "Consultando desempeño de campañas…",
+    toolFallback: "Usando herramienta…",
   },
   pt: {
     title: "Copiloto de marketing",
@@ -46,6 +50,10 @@ const I18N = {
     placeholder: "Escreva uma mensagem…",
     you: "Você",
     agent: "Agente",
+    thinking: "Consultando…",
+    resuming: "Retomando…",
+    toolConsultar: "Consultando desempenho das campanhas…",
+    toolFallback: "Usando ferramenta…",
   },
 };
 
@@ -65,6 +73,7 @@ const state = {
   pongTimer: null,
   backoffIndex: 0,
   hitlOpen: false,
+  progress: null,
 };
 
 const el = {
@@ -112,6 +121,7 @@ function applyI18n() {
   el.langPt.classList.toggle("is-on", state.lang === "pt");
   renderSessions();
   refreshStatusLabel();
+  refreshProgressLabel();
 }
 
 function renderSessions() {
@@ -157,6 +167,39 @@ function escapeHtml(value) {
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
+}
+
+function progressText(payload) {
+  const key = payload?.paso_key;
+  if (key === "resuming") return t("resuming");
+  if (key === "tool") {
+    if (payload.tool === "consultar_desempeno_campanas") return t("toolConsultar");
+    return t("toolFallback");
+  }
+  return t("thinking");
+}
+
+function hideProgress() {
+  const node = el.transcript.querySelector(".bubble.progress");
+  if (node) node.remove();
+  state.progress = null;
+}
+
+function showProgress(payload) {
+  state.progress = payload || { paso_key: "thinking" };
+  let node = el.transcript.querySelector(".bubble.progress");
+  if (!node) {
+    node = document.createElement("div");
+    node.className = "bubble progress";
+    el.transcript.appendChild(node);
+  }
+  node.textContent = progressText(state.progress);
+  el.transcript.scrollTop = el.transcript.scrollHeight;
+}
+
+function refreshProgressLabel() {
+  const node = el.transcript.querySelector(".bubble.progress");
+  if (node && state.progress) node.textContent = progressText(state.progress);
 }
 
 function addBubble(kind, text) {
@@ -269,13 +312,20 @@ function connect() {
     try {
       payload = JSON.parse(raw);
     } catch {
+      hideProgress();
       addBubble("agent", String(raw));
       return;
     }
+    if (payload.tipo === "progreso") {
+      showProgress(payload);
+      return;
+    }
     if (payload.status === "awaiting_approval") {
+      hideProgress();
       showHitl(payload);
       return;
     }
+    hideProgress();
     hideHitl();
     const text = textFromContent(payload.response_text);
     addBubble(payload.status === "error" ? "sys" : "agent", text || JSON.stringify(payload));
@@ -289,6 +339,7 @@ function connect() {
     if (ev.code === 4401) {
       state.unauthorized = true;
       setStatus("err");
+      hideProgress();
       addBubble("sys", t("unauthorized"));
       return;
     }
@@ -298,6 +349,7 @@ function connect() {
     }
     if (state.hitlOpen) {
       hideHitl();
+      hideProgress();
       addBubble("sys", t("hitlLost"));
     }
     scheduleReconnect();
@@ -322,6 +374,7 @@ function switchSession(id) {
   state.sessionId = id;
   localStorage.setItem("ui_session", id);
   hideHitl();
+  hideProgress();
   el.transcript.replaceChildren();
   renderSessions();
   disconnectIntentional();
@@ -338,6 +391,7 @@ el.composer.addEventListener("submit", (e) => {
   const text = el.input.value.trim();
   if (!text || !state.connected) return;
   addBubble("user", text);
+  showProgress({ paso_key: "thinking" });
   sendText(text);
   el.input.value = "";
 });
@@ -352,11 +406,13 @@ el.input.addEventListener("keydown", (e) => {
 el.btnApprove.addEventListener("click", () => {
   sendText(JSON.stringify({ type: "hitl_decision", decision: "approve" }));
   hideHitl();
+  showProgress({ paso_key: "resuming" });
 });
 
 el.btnReject.addEventListener("click", () => {
   sendText(JSON.stringify({ type: "hitl_decision", decision: "reject" }));
   hideHitl();
+  showProgress({ paso_key: "resuming" });
 });
 
 el.langEs.addEventListener("click", () => {

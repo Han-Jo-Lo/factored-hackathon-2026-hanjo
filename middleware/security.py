@@ -5,6 +5,7 @@ from langchain_core.messages import ToolMessage
 import logging
 
 from app.auth import apply_role_ceiling_to_args, tool_is_allowed
+from config import publicar_canal
 
 logger=logging.getLogger("agent.security")
 
@@ -18,18 +19,40 @@ logger=logging.getLogger("agent.security")
 DENIED_TOOLS = {"execute", "write_file", "edit_file"}
 
 
-def role_from_request(request: ToolCallRequest) -> str | None:
+def _configurable(request: ToolCallRequest) -> dict:
     runtime = request.runtime
     if runtime is None:
-        return None
+        return {}
     config = getattr(runtime, "config", None)
     if not isinstance(config, dict):
-        return None
+        return {}
     configurable = config.get("configurable") or {}
-    role = configurable.get("role")
+    return configurable if isinstance(configurable, dict) else {}
+
+
+def role_from_request(request: ToolCallRequest) -> str | None:
+    role = _configurable(request).get("role")
     if not isinstance(role, str) or not role.strip():
         return None
     return role
+
+
+def thread_id_from_request(request: ToolCallRequest) -> str | None:
+    thread_id = _configurable(request).get("thread_id")
+    if not isinstance(thread_id, str) or not thread_id.strip():
+        return None
+    return thread_id
+
+
+def _publicar_progreso_tool(request: ToolCallRequest, tool_name: str) -> None:
+    thread_id = thread_id_from_request(request)
+    if not thread_id:
+        return
+    publicar_canal(thread_id, {
+        "tipo": "progreso",
+        "paso_key": "tool",
+        "tool": tool_name,
+    })
 
 
 def _unauthorized_message(request: ToolCallRequest, detail: str) -> ToolMessage:
@@ -71,6 +94,7 @@ def tool_authorization(
         tool_call={**request.tool_call, "args": capped_args}
     )
 
+    _publicar_progreso_tool(request, tool_name)
     return handler(request)
 
 

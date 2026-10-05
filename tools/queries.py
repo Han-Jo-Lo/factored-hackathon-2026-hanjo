@@ -81,7 +81,10 @@ class ConsultaAtribucionInput(BaseModel):
         default=None, description="Mes final del rango, formato YYYY-MM."
     )
     agrupar_por: list[DimensionAgrupacion] = Field(
-        default_factory=lambda: [DimensionAgrupacion.campaign_id, DimensionAgrupacion.send_channel],
+        default_factory=lambda: [
+            DimensionAgrupacion.campaign_id,
+            DimensionAgrupacion.send_channel,
+        ],
         description="Dimensiones por las que agregar el resultado.",
     )
     metricas: list[Metrica] = Field(

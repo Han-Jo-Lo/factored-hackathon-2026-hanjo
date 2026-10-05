@@ -27,6 +27,8 @@ def test_sql_tool_with_valid_result(monkeypatch):
     resultado=campaign_performance_tool.invoke({"send_channels":["Email"]})
 
     assert "CMP0032" in resultado
+    assert "registro 1:" in resultado
+    assert "| campaign_id |" not in resultado
 
 def test_sql_tool_with_pydatinc_validationerror():
     with pytest.raises(ValidationError):
@@ -42,6 +44,23 @@ def test_sql_tool_without_result(monkeypatch):
     resultado = campaign_performance_tool.invoke({"campaign_ids":["CMP9999"]})
  
     assert "no devolvio resultados" in resultado.lower()
+
+
+def test_sql_tool_returns_all_rows_as_records_not_markdown(monkeypatch):
+    df_falso = pd.DataFrame({
+        "campaign_id": ["CMP0032", "CMP0001"],
+        "roi": [3.2, 0.4],
+        "segmento": ["retail", "pyme"],
+    })
+    monkeypatch.setattr("tools.agent_tools.query_campaign_performance", lambda params: df_falso)
+
+    resultado = campaign_performance_tool.invoke({"send_channels": ["Email"]})
+    assert "registro 1:" in resultado
+    assert "registro 2:" in resultado
+    assert "CMP0001" in resultado
+    assert "segmento" in resultado
+    assert "pyme" in resultado
+    assert "|---" not in resultado
 
 
 def test_build_query_viewer_role_caps_sql():

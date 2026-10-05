@@ -15,6 +15,7 @@ COPY frontend ./frontend
 COPY tools ./tools
 COPY middleware ./middleware
 COPY contracts ./contracts
+COPY skills ./skills
 
 EXPOSE 8000
 

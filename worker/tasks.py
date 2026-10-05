@@ -1,7 +1,6 @@
-from config import r,get_redis_saver,SYSTEM_PROMPT,INTERRUPT_ON
+from config import get_redis_saver,SYSTEM_PROMPT,INTERRUPT_ON,publicar_canal
 from worker.celery_app import app_celery
 from langchain.messages import HumanMessage
-import json
 from deepagents import create_deep_agent
 from tools import ALL_TOOLS
 from middleware import ALL_MIDDLEWARE
@@ -18,7 +17,7 @@ def build_agent():
         model="openai:gpt-4o",
         tools=ALL_TOOLS,
         system_prompt=SYSTEM_PROMPT,
-        #skills=["./skills/"],
+        skills=["./skills/"],
         checkpointer=_checkpointer,
         interrupt_on=INTERRUPT_ON,
         middleware=ALL_MIDDLEWARE,
@@ -35,7 +34,7 @@ def _config(thread_id,user_id,role):
     }
 
 def _publicar(thread_id, payload: dict):
-    r.publish(f"canal:{thread_id}", json.dumps(payload, default=str))
+    publicar_canal(thread_id, payload)
 
 
 def _serializar_interrupt(valor):
@@ -117,6 +116,7 @@ def _publicar_resultado_agente(thread_id, user_id, role, response):
 def ejecutar_agente(thread_id: str, user_id: str, role: str, message: str):
     agent = build_agent()
     config = _config(thread_id, user_id, role)
+    _publicar(thread_id, {"tipo": "progreso", "paso_key": "thinking"})
     response = agent.invoke(
         {"messages": [HumanMessage(content=message)]},
         config=config,
@@ -131,6 +131,7 @@ def reanudar_agente(thread_id, user_id, role, decision: str):
         return
     agent = build_agent()
     config = _config(thread_id, user_id, role)
+    _publicar(thread_id, {"tipo": "progreso", "paso_key": "resuming"})
     try:
         response = agent.invoke(
             Command(resume={"decisions": [{"type": decision}]}),
