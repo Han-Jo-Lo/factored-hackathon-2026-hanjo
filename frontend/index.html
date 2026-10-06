@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Copiloto marketing</title>
+    <title>Asistente de desempeño de campañas</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
@@ -11,7 +11,7 @@
       <div class="brand">
         <span class="brand-mark" aria-hidden="true"></span>
         <div>
-          <h1 id="title">Copiloto marketing</h1>
+          <h1 id="title">Asistente de desempeño de campañas</h1>
           <p class="tagline" id="tagline">Analista interno · campañas</p>
         </div>
       </div>
@@ -32,6 +32,14 @@
         <h2 id="session-heading">Sesión</h2>
         <nav class="session-list" id="session-list"></nav>
         <p class="role-line"><span id="role-label">Rol</span>: <strong id="role-value"></strong></p>
+        <section class="catalog" aria-label="Campos consultables">
+          <h2 id="dims-heading">Dimensiones</h2>
+          <ul class="chip-list" id="dims-list"></ul>
+          <p class="catalog-note" id="channels-note"></p>
+          <h2 id="metrics-heading">Métricas</h2>
+          <ul class="chip-list" id="metrics-list"></ul>
+          <p class="catalog-note" id="metrics-note"></p>
+        </section>
       </aside>
 
       <main class="main">
@@ -48,7 +56,7 @@
 
         <form class="composer" id="composer">
           <label class="sr-only" for="input" id="input-label">Mensaje</label>
-          <textarea id="input" rows="2" required></textarea>
+          <textarea id="input" rows="3" required></textarea>
           <button type="submit" class="btn btn-primary" id="btn-send">Enviar</button>
         </form>
       </main>

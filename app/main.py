@@ -4,7 +4,7 @@ from pathlib import Path
 from config import REDIS_HOST,REDIS_PORT
 from app.connection_manager import ConnectionManager
 from worker.tasks import ejecutar_agente,reanudar_agente
-from app.auth import resolve_test_session
+from app.auth import resolve_test_session, bind_visitor_thread
 import asyncio
 import redis.asyncio as aioredis
 import json
@@ -20,7 +20,14 @@ FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
 @app.websocket('/ws/{client_id}')
 async def websocket_endpoint(websocket:WebSocket,client_id:str):
-    session = resolve_test_session(client_id)
+    claims = resolve_test_session(client_id)
+    if claims is None:
+        await websocket.accept()
+        await websocket.close(code=4401)
+        return
+
+    visitor_id = websocket.query_params.get("vid")
+    session = bind_visitor_thread(claims, visitor_id)
     if session is None:
         await websocket.accept()
         await websocket.close(code=4401)

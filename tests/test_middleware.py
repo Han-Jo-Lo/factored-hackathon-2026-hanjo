@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from middleware.security import sanitize_tool_output,tool_authorization
 
 class FakeRuntime:
-    def __init__(self, role=None, user_id="analyst_demo"):
+    def __init__(self, role=None, user_id="analyst"):
         self.config = {
             "configurable": {
                 "thread_id": "sess_test",

@@ -1,12 +1,13 @@
 """
 Sesion de prueba de confianza y politica de acceso por rol.
 
-En produccion TEST_SESSIONS es la validacion de un JWT/cookie, y
-ROLE_POLICIES vive en el mismo servicio de autorizacion. El modelo
-nunca rellena user_id ni role, ni puede ampliar el techo de datos.
+TEST_SESSIONS es un IdP de juguete (rol + user). El thread_id del dict
+no se usa en el chat: cada navegador manda un visitor_id y el servidor
+arma session_key:visitor_id. El modelo no elige rol ni hilo.
 """
 
 from typing import Any, Optional, TypedDict
+import re
 
 
 class SessionClaims(TypedDict):
@@ -22,20 +23,15 @@ class RolePolicy(TypedDict):
 
 
 TEST_SESSIONS: dict[str, SessionClaims] = {
-    "analyst_demo": {
-        "user_id": "analyst_demo",
+    "analyst": {
+        "user_id": "analyst",
         "role": "marketing_analyst",
-        "thread_id": "sess_analyst_demo_1",
+        "thread_id": "sess_analyst_1",
     },
-    "analyst_pt": {
-        "user_id": "analyst_pt",
-        "role": "marketing_analyst",
-        "thread_id": "sess_analyst_pt_1",
-    },
-    "viewer_demo": {
-        "user_id": "viewer_demo",
+    "viewer": {
+        "user_id": "viewer",
         "role": "marketing_viewer",
-        "thread_id": "sess_viewer_demo_1",
+        "thread_id": "sess_viewer_1",
     },
 }
 
@@ -60,6 +56,24 @@ _ORDEN_REQUIERE_METRICA = {
     "valor_desc": "valor_creditado_usd",
     "conversiones_desc": "conversiones_reales",
 }
+
+_VISITOR_ID = re.compile(r"^[0-9a-fA-F-]{8,36}$")
+
+
+def resolve_test_session(session_key: str) -> Optional[SessionClaims]:
+    """Devuelve claims solo si la clave esta en el IdP de prueba."""
+    return TEST_SESSIONS.get(session_key)
+
+
+def bind_visitor_thread(
+    session: SessionClaims, visitor_id: str | None
+) -> SessionClaims | None:
+    """Hilo por navegador. visitor_id invalido -> None (no hay chat)."""
+    if not visitor_id or not _VISITOR_ID.fullmatch(visitor_id):
+        return None
+    bound = dict(session)
+    bound["thread_id"] = f"{session['user_id']}:{visitor_id}"
+    return bound
 
 
 def resolve_test_session(session_key: str) -> Optional[SessionClaims]:

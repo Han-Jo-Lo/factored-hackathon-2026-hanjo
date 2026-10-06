@@ -9,3 +9,7 @@ mes >='2026-01' and mes <='2026-03'
 group by all
 order by roi desc
 LIMIT 1000;
+
+
+
+como fueron las conversiones y el  roi de las campañas por canal entre abril y septiembre del 2024

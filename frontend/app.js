@@ -1,12 +1,11 @@
 const SESSIONS = [
-  { id: "analyst_demo", role: "marketing_analyst" },
-  { id: "analyst_pt", role: "marketing_analyst" },
-  { id: "viewer_demo", role: "marketing_viewer" },
+  { id: "analyst", role: "marketing_analyst" },
+  { id: "viewer", role: "marketing_viewer" },
 ];
 
 const I18N = {
   es: {
-    title: "Copiloto marketing",
+    title: "Asistente de desempeño de campañas",
     tagline: "Analista interno · campañas",
     session: "Sesión",
     role: "Rol",
@@ -22,16 +21,33 @@ const I18N = {
       "Consulta con cobertura por debajo del umbral. El ROI puede estar sesgado.",
     hitlLost:
       "Si había una aprobación pendiente, vuelve a lanzar la consulta o espera un nuevo aviso HITL.",
-    placeholder: "Escribe un mensaje…",
+    placeholder:
+      "Haz una consulta de desempeño de campañas. Ej.: ¿Cómo fue el ROI por canal en marzo 2026?",
     you: "Tú",
     agent: "Agente",
     thinking: "Consultando…",
     resuming: "Reanudando…",
     toolConsultar: "Consultando desempeño de campañas…",
     toolFallback: "Usando herramienta…",
+    dimsHeading: "Dimensiones",
+    metricsHeading: "Métricas",
+    channelsNote: "Canales: Email, SMS, Push, WhatsApp, Voice.",
+    metricsNoteViewer: "Este rol no consulta costo ni valor creditado.",
+    metricsNoteAnalyst: "Cobertura de costo baja (< 70) pide aprobación.",
+    dim_campaign_id: "Campaña (id)",
+    dim_campaign_name: "Nombre de campaña",
+    dim_send_channel: "Canal",
+    dim_mes: "Mes",
+    met_total_enviados: "Envíos",
+    met_conversiones_reales: "Conversiones reales",
+    met_conversiones_creditadas: "Conversiones atribuidas",
+    met_valor_creditado_usd: "Valor atrib. (USD)",
+    met_costo_total_usd: "Costo (USD)",
+    met_roi: "ROI",
+    met_pct_cobertura_costo: "Cobertura de costo",
   },
   pt: {
-    title: "Copiloto de marketing",
+    title: "Assistente de desempenho de campanhas",
     tagline: "Analista interno · campanhas",
     session: "Sessão",
     role: "Função",
@@ -47,23 +63,56 @@ const I18N = {
       "Consulta com cobertura abaixo do limiar. O ROI pode estar enviesado.",
     hitlLost:
       "Se havia uma aprovação pendente, envie de novo a consulta ou aguarde um novo aviso HITL.",
-    placeholder: "Escreva uma mensagem…",
+    placeholder:
+      "Faça uma consulta de desempenho das campanhas. Ex.: Como foi o ROI por canal em março de 2026?",
     you: "Você",
     agent: "Agente",
     thinking: "Consultando…",
     resuming: "Retomando…",
     toolConsultar: "Consultando desempenho das campanhas…",
     toolFallback: "Usando ferramenta…",
+    dimsHeading: "Dimensões",
+    metricsHeading: "Métricas",
+    channelsNote: "Canais: Email, SMS, Push, WhatsApp, Voice.",
+    metricsNoteViewer: "Esta função não consulta custo nem valor creditado.",
+    metricsNoteAnalyst: "Cobertura de custo baixa (< 70) pede aprovação.",
+    dim_campaign_id: "Campanha (id)",
+    dim_campaign_name: "Nome da campanha",
+    dim_send_channel: "Canal",
+    dim_mes: "Mês",
+    met_total_enviados: "Envios",
+    met_conversiones_reales: "Conversões reais",
+    met_conversiones_creditadas: "Conversões atribuídas",
+    met_valor_creditado_usd: "Valor atrib. (USD)",
+    met_costo_total_usd: "Custo (USD)",
+    met_roi: "ROI",
+    met_pct_cobertura_costo: "Cobertura de custo",
   },
 };
 
-const PING_MS = 25000;
+const VISITOR_KEY = "ui_visitor";
+
+function migrateSessionId(stored) {
+  if (stored === "analyst_demo" || stored === "analyst_pt") return "analyst";
+  if (stored === "viewer_demo") return "viewer";
+  if (stored === "analyst" || stored === "viewer") return stored;
+  return "analyst";
+}
+
+function visitorId() {
+  let id = localStorage.getItem(VISITOR_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(VISITOR_KEY, id);
+  }
+  return id;
+}
 const PONG_TIMEOUT_MS = 10000;
 const BACKOFF = [1000, 2000, 4000, 8000, 15000];
 
 const state = {
   lang: localStorage.getItem("ui_lang") || "es",
-  sessionId: localStorage.getItem("ui_session") || "analyst_demo",
+  sessionId: migrateSessionId(localStorage.getItem("ui_session")),
   ws: null,
   intentionalClose: false,
   unauthorized: false,
@@ -75,6 +124,8 @@ const state = {
   hitlOpen: false,
   progress: null,
 };
+
+localStorage.setItem("ui_session", state.sessionId);
 
 const el = {
   title: document.getElementById("title"),
@@ -96,6 +147,12 @@ const el = {
   composer: document.getElementById("composer"),
   langEs: document.getElementById("lang-es"),
   langPt: document.getElementById("lang-pt"),
+  dimsHeading: document.getElementById("dims-heading"),
+  metricsHeading: document.getElementById("metrics-heading"),
+  dimsList: document.getElementById("dims-list"),
+  metricsList: document.getElementById("metrics-list"),
+  channelsNote: document.getElementById("channels-note"),
+  metricsNote: document.getElementById("metrics-note"),
 };
 
 function t(key) {
@@ -120,6 +177,7 @@ function applyI18n() {
   el.langEs.classList.toggle("is-on", state.lang === "es");
   el.langPt.classList.toggle("is-on", state.lang === "pt");
   renderSessions();
+  renderCatalog();
   refreshStatusLabel();
   refreshProgressLabel();
 }
@@ -135,6 +193,43 @@ function renderSessions() {
     el.sessionList.appendChild(btn);
   }
   el.roleValue.textContent = currentSession().role;
+}
+
+const DIMENSIONS = ["campaign_id", "campaign_name", "send_channel", "mes"];
+const METRICS = [
+  "total_enviados",
+  "conversiones_reales",
+  "conversiones_creditadas",
+  "valor_creditado_usd",
+  "costo_total_usd",
+  "roi",
+  "pct_cobertura_costo",
+];
+const VIEWER_METRICS = new Set(["roi", "pct_cobertura_costo", "conversiones_reales"]);
+
+function renderCatalog() {
+  el.dimsHeading.textContent = t("dimsHeading");
+  el.metricsHeading.textContent = t("metricsHeading");
+  el.channelsNote.textContent = t("channelsNote");
+  const viewer = currentSession().role === "marketing_viewer";
+  el.metricsNote.textContent = viewer ? t("metricsNoteViewer") : t("metricsNoteAnalyst");
+
+  el.dimsList.replaceChildren();
+  for (const dim of DIMENSIONS) {
+    const li = document.createElement("li");
+    li.className = "chip";
+    li.textContent = t("dim_" + dim);
+    el.dimsList.appendChild(li);
+  }
+
+  el.metricsList.replaceChildren();
+  for (const met of METRICS) {
+    const li = document.createElement("li");
+    const allowed = !viewer || VIEWER_METRICS.has(met);
+    li.className = "chip" + (allowed ? "" : " is-off");
+    li.textContent = t("met_" + met);
+    el.metricsList.appendChild(li);
+  }
 }
 
 function setStatus(kind) {
@@ -246,7 +341,8 @@ function showHitl(payload) {
 
 function wsUrl(sessionId) {
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
-  return `${proto}//${location.host}/ws/${sessionId}`;
+  const vid = encodeURIComponent(visitorId());
+  return `${proto}//${location.host}/ws/${sessionId}?vid=${vid}`;
 }
 
 function clearTimers() {
@@ -377,6 +473,7 @@ function switchSession(id) {
   hideProgress();
   el.transcript.replaceChildren();
   renderSessions();
+  renderCatalog();
   disconnectIntentional();
   connect();
 }
